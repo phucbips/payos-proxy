@@ -1,0 +1,18 @@
+{
+  "name": "quiz-app-api",
+  "version": "1.0.0",
+  "description": "API backend cho quiz app được deploy trên Vercel",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "vercel build",
+    "start": "vercel start"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.11.0"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  }
+}
