@@ -1,6 +1,18 @@
 import { db, auth } from './lib/firebaseAdmin.js';
+import admin from 'firebase-admin'; // ⚡ SỬA LỖI: Cần import admin
 
 export default async function handler(req, res) {
+  // --- ⚡ MỚI: XỬ LÝ CORS ---
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  // --- KẾT THÚC CORS ---
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Phương thức không được phép' });
   }
@@ -25,11 +37,16 @@ export default async function handler(req, res) {
     if (!uid || !role) {
       return res.status(400).json({ success: false, message: 'Thiếu thông tin uid hoặc role' });
     }
-
+    
     // --- 3. Cập nhật role cho user ---
+    
+    // BƯỚC 3A: CẬP NHẬT FIREBASE AUTH (RẤT QUAN TRỌNG)
+    await auth.setCustomUserClaims(uid, { role: role });
+
+    // BƯỚC 3B: CẬP NHẬT FIRESTORE
     await db.collection('users').doc(uid).update({
       role: role,
-      updatedAt: new Date()
+      updatedAt: admin.firestore.FieldValue.serverTimestamp() // ⚡ SỬA LỖI: Dùng admin.
     });
 
     // --- 4. Trả về kết quả ---
@@ -43,3 +60,4 @@ export default async function handler(req, res) {
     res.status(400).json({ success: false, message: error.message });
   }
 }
+

@@ -1,7 +1,7 @@
 import { db, auth } from './lib/firebaseAdmin.js';
 import admin from 'firebase-admin'; // Cần cho FieldValue
 
-// Hàm tạo Key ngẫu nhiên (bạn có thể dùng lại hàm này)
+// Hàm tạo Key ngẫu nhiên
 const generateAccessKey = (length = 12) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
@@ -15,6 +15,18 @@ const generateAccessKey = (length = 12) => {
 };
 
 export default async function handler(req, res) {
+  // --- ⚡ MỚI: XỬ LÝ CORS ---
+  res.setHeader('Access-Control-Allow-Origin', '*'); // Cho phép mọi domain
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Xử lý yêu cầu OPTIONS (preflight)
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  // --- KẾT THÚC CORS ---
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Phương thức không được phép' });
   }
@@ -34,7 +46,6 @@ export default async function handler(req, res) {
     }
 
     // --- 2. Lấy dữ liệu từ body ---
-    // (status, unlocksCapability, cartToUnlock, orderId)
     const { status, unlocksCapability, cartToUnlock, orderId } = req.body;
     
     // --- 3. Logic chính: Tạo Key ---
@@ -73,3 +84,4 @@ export default async function handler(req, res) {
     res.status(400).json({ success: false, message: error.message });
   }
 }
+

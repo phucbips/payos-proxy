@@ -1,6 +1,18 @@
 import { db, auth } from './lib/firebaseAdmin.js';
+import admin from 'firebase-admin'; // ⚡ SỬA LỖI: Cần import admin
 
 export default async function handler(req, res) {
+  // --- ⚡ MỚI: XỬ LÝ CORS ---
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  // --- KẾT THÚC CORS ---
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Phương thức không được phép' });
   }
@@ -18,7 +30,6 @@ export default async function handler(req, res) {
 
     // --- 2. Lấy dữ liệu từ body ---
     const { cart, paymentMethod, amount } = req.body;
-
     if (!cart || (!cart.subjects?.length && !cart.courses?.length)) {
       return res.status(400).json({ success: false, message: 'Giỏ hàng không hợp lệ' });
     }
@@ -30,9 +41,9 @@ export default async function handler(req, res) {
       cart: cart,
       paymentMethod: paymentMethod || 'unknown',
       amount: amount || 0,
-      status: 'pending', // pending, processed, completed, cancelled
-      createdAt: new Date(),
-      updatedAt: new Date()
+      status: 'pending',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(), // ⚡ SỬA LỖI: Dùng server time
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()  // ⚡ SỬA LỖI: Dùng server time
     };
 
     // Thêm đơn hàng vào database
@@ -51,3 +62,4 @@ export default async function handler(req, res) {
     res.status(400).json({ success: false, message: error.message });
   }
 }
+

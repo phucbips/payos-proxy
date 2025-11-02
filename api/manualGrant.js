@@ -3,6 +3,17 @@ import { getQuizIdsFromCart } from './lib/helpers.js';
 import admin from 'firebase-admin'; // Cần cho FieldValue
 
 export default async function handler(req, res) {
+  // --- ⚡ MỚI: XỬ LÝ CORS ---
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  // --- KẾT THÚC CORS ---
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Phương thức không được phép' });
   }
@@ -63,3 +74,4 @@ export default async function handler(req, res) {
     res.status(400).json({ success: false, message: error.message });
   }
 }
+

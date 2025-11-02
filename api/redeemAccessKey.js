@@ -3,6 +3,17 @@ import { getQuizIdsFromCart } from './lib/helpers.js';
 import admin from 'firebase-admin'; // Cần cho FieldValue
 
 export default async function handler(req, res) {
+  // --- ⚡ MỚI: XỬ LÝ CORS ---
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  // --- KẾT THÚC CORS ---
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Phương thức không được phép' });
   }
@@ -17,66 +28,75 @@ export default async function handler(req, res) {
     }
     
     const decodedToken = await auth.verifyIdToken(token);
+    const uid = decodedToken.uid; // ⚡ SỬA LỖI: Lấy uid ở đây
 
     // --- 2. Lấy dữ liệu từ body ---
-    const { accessKey } = req.body;
-
-    if (!accessKey) {
+    // ⚡ SỬA LỖI: Đổi 'accessKey' thành 'key' để khớp với code React
+    const { key } = req.body;
+    if (!key) {
       return res.status(400).json({ success: false, message: 'Thiếu access key' });
     }
 
-    // --- 3. Kiểm tra key trong database ---
-    const keyRef = db.collection('accessKeys').doc(accessKey);
+    // --- 3. Kiểm tra key ---
+    const keyRef = db.collection('accessKeys').doc(key); // ⚡ SỬA LỖI: Dùng 'key'
     const keyDoc = await keyRef.get();
     
-    if (!keyDoc.exists) {
-      throw new Error('Access key không tồn tại');
-    }
+    if (!keyDoc.exists) throw new Error('Access key không tồn tại');
 
     const keyData = keyDoc.data();
+    if (keyData.status === 'used') throw new Error('Access key đã được sử dụng');
 
-    // Kiểm tra trạng thái key
-    if (keyData.status === 'used') {
-      throw new Error('Access key đã được sử dụng');
-    }
-
-    // --- 4. Lấy danh sách quiz cần unlock ---
-    let quizIdsToUnlock = [];
-
-    if (keyData.unlocksCapability) {
-      // Nếu key unlock tính năng
-      quizIdsToUnlock = []; // Tùy thuộc vào logic tính năng
-    } else if (keyData.cartToUnlock) {
-      // Nếu key unlock từ cart
-      quizIdsToUnlock = await getQuizIdsFromCart(keyData.cartToUnlock);
-    }
-
-    if (quizIdsToUnlock.length === 0) {
-      throw new Error('Không có bài tập nào để unlock');
-    }
-
-    // --- 5. Cập nhật user và đánh dấu key đã sử dụng ---
-    const userRef = db.collection('users').doc(decodedToken.uid);
+    // --- 4. Logic Xử lý Key ---
+    const userRef = db.collection('users').doc(uid); // ⚡ SỬA LỖI: Dùng 'uid'
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+    let message = '';
     
-    // Cập nhật danh sách unlocked quizzes của user
-    await userRef.update({
-      unlockedQuizzes: admin.firestore.FieldValue.arrayUnion(...quizIdsToUnlock),
-      lastAccessKeyUsed: accessKey,
-      lastKeyUsedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+    // 4A: Xử lý Key Tính năng (ví dụ: cấp quyền Teacher)
+    if (keyData.unlocksCapability) {
+      let userUpdate = {
+        lastAccessKeyUsed: key, // ⚡ SỬA LỖI: Dùng 'key'
+        lastKeyUsedAt: timestamp
+      };
+      
+      if (keyData.unlocksCapability === 'TEACHER_QUIZ_CREATION') {
+        userUpdate.canCreateQuizzes = true;
+        message = 'Kích hoạt quyền tạo bài tập thành công!';
+      } else {
+        // Các tính năng khác...
+        message = 'Kích hoạt tính năng thành công!';
+      }
+      
+      await userRef.update(userUpdate);
+    } 
+    // 4B: Xử lý Key Nội dung (mở khóa bài tập)
+    else if (keyData.cartToUnlock) {
+      const quizIdsToUnlock = await getQuizIdsFromCart(keyData.cartToUnlock);
+      if (quizIdsToUnlock.length === 0) {
+        // ⚡ SỬA LỖI: Vẫn cho phép nếu key hợp lệ nhưng không có quiz
+        message = 'Key hợp lệ nhưng không có bài tập nào để unlock.';
+      } else {
+        await userRef.update({
+          unlockedQuizzes: admin.firestore.FieldValue.arrayUnion(...quizIdsToUnlock),
+          lastAccessKeyUsed: key, // ⚡ SỬA LỖI: Dùng 'key'
+          lastKeyUsedAt: timestamp
+        });
+        message = `Đổi key thành công! Đã unlock ${quizIdsToUnlock.length} bài tập.`;
+      }
+    } else {
+      throw new Error('Key không hợp lệ, không có nội dung để mở khóa.');
+    }
 
-    // Đánh dấu key đã sử dụng
+    // --- 5. Đánh dấu key đã sử dụng ---
     await keyRef.update({
       status: 'used',
-      usedBy: decodedToken.uid,
-      usedAt: admin.firestore.FieldValue.serverTimestamp()
+      usedBy: uid, // ⚡ SỬA LỖI: Dùng 'uid'
+      usedAt: timestamp
     });
 
     // --- 6. Trả về kết quả ---
     res.status(200).json({ 
       success: true, 
-      message: `Đổi key thành công! Đã unlock ${quizIdsToUnlock.length} bài tập.`,
-      unlockedQuizzes: quizIdsToUnlock
+      message: message
     });
 
   } catch (error) {
@@ -84,3 +104,4 @@ export default async function handler(req, res) {
     res.status(400).json({ success: false, message: error.message });
   }
 }
+
