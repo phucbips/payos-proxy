@@ -3,8 +3,5 @@
     "api/**/*.js": {
       "runtime": "nodejs18.x"
     }
-  },
-  "env": {
-    "FIREBASE_SERVICE_ACCOUNT_KEY": "@firebase-service-account-key"
   }
 }
