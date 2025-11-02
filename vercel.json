@@ -13,9 +13,17 @@
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+        // 1. Thêm dòng này để cho phép gửi credentials (như token)
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        
+        // 2. Sửa "value" từ "*" thành tên miền frontend của bạn
+        { "key": "Access-Control-Allow-Origin", "value": "https://thpt-chi-linh.web.app" },
+        
+        // 3. Giữ lại các method (tôi đã thêm một vài method phổ biến)
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+        
+        // 4. Cập nhật danh sách header cho phép (quan trọng là phải có 'Authorization')
+        { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization" }
       ]
     }
   ]
