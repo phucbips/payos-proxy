@@ -1,18 +1,36 @@
 {
-  "name": "quiz-app-api",
+  "name": "quiz-app-react-vercel",
   "version": "1.0.0",
-  "description": "API backend cho quiz app được deploy trên Vercel",
+  "description": "Fullstack E-Learning app (React + Vercel Functions)",
   "main": "index.js",
   "type": "module",
+  "private": true,
   "scripts": {
     "dev": "vercel dev",
-    "build": "vercel build",
-    "start": "vercel start"
+    "build": "react-scripts build",
+    "start": "react-scripts start"
   },
   "dependencies": {
-    "firebase-admin": "^11.11.0"
+    "firebase-admin": "^11.11.0",
+    "firebase": "^10.12.2",
+    "lucide-react": "^0.395.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-scripts": "5.0.1"
   },
   "devDependencies": {
     "vercel": "^32.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }
