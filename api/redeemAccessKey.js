@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     }
     
     const decodedToken = await auth.verifyIdToken(token);
-    const uid = decodedToken.uid; // ⚡ SỬA LỖI: Lấy uid ở đây
+    const uid = decodedToken.uid; // Lấy uid ở đây
 
     // --- 2. Lấy dữ liệu từ body ---
     // ⚡ SỬA LỖI: Đổi 'accessKey' thành 'key' để khớp với code React
@@ -38,23 +38,23 @@ export default async function handler(req, res) {
     }
 
     // --- 3. Kiểm tra key ---
-    const keyRef = db.collection('accessKeys').doc(key); // ⚡ SỬA LỖI: Dùng 'key'
+    const keyRef = db.collection('accessKeys').doc(key); // Dùng 'key'
     const keyDoc = await keyRef.get();
     
     if (!keyDoc.exists) throw new Error('Access key không tồn tại');
 
     const keyData = keyDoc.data();
-    if (keyData.status === 'used') throw new Error('Access key đã được sử dụng');
+    if (keyData.status !== 'new') throw new Error('Key đã được sử dụng hoặc đã hết hạn.'); // ⚡ SỬA LỖI: Logic
 
     // --- 4. Logic Xử lý Key ---
-    const userRef = db.collection('users').doc(uid); // ⚡ SỬA LỖI: Dùng 'uid'
+    const userRef = db.collection('users').doc(uid); // Dùng 'uid'
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
     let message = '';
     
     // 4A: Xử lý Key Tính năng (ví dụ: cấp quyền Teacher)
     if (keyData.unlocksCapability) {
       let userUpdate = {
-        lastAccessKeyUsed: key, // ⚡ SỬA LỖI: Dùng 'key'
+        lastAccessKeyUsed: key, // Dùng 'key'
         lastKeyUsedAt: timestamp
       };
       
@@ -72,12 +72,12 @@ export default async function handler(req, res) {
     else if (keyData.cartToUnlock) {
       const quizIdsToUnlock = await getQuizIdsFromCart(keyData.cartToUnlock);
       if (quizIdsToUnlock.length === 0) {
-        // ⚡ SỬA LỖI: Vẫn cho phép nếu key hợp lệ nhưng không có quiz
+        // Vẫn cho phép nếu key hợp lệ nhưng không có quiz
         message = 'Key hợp lệ nhưng không có bài tập nào để unlock.';
       } else {
         await userRef.update({
           unlockedQuizzes: admin.firestore.FieldValue.arrayUnion(...quizIdsToUnlock),
-          lastAccessKeyUsed: key, // ⚡ SỬA LỖI: Dùng 'key'
+          lastAccessKeyUsed: key, // Dùng 'key'
           lastKeyUsedAt: timestamp
         });
         message = `Đổi key thành công! Đã unlock ${quizIdsToUnlock.length} bài tập.`;
@@ -88,8 +88,8 @@ export default async function handler(req, res) {
 
     // --- 5. Đánh dấu key đã sử dụng ---
     await keyRef.update({
-      status: 'used',
-      usedBy: uid, // ⚡ SỬA LỖI: Dùng 'uid'
+      status: 'redeemed', // ⚡ SỬA LỖI: Đổi 'used' thành 'redeemed'
+      usedBy: uid,
       usedAt: timestamp
     });
 
@@ -104,4 +104,3 @@ export default async function handler(req, res) {
     res.status(400).json({ success: false, message: error.message });
   }
 }
-
